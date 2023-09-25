@@ -1,0 +1,391 @@
+---
+title: "Descripción del cálculo de los principales indicadores con R"
+institution: "[Fuente Inegi Publicacion](https://www.inegi.org.mx/contenidos/productos/prod_serv/contenidos/espanol/bvinegi/productos/nueva_estruc/889463911166.pdf)"
+execute:
+  freeze: true
+  eval: false
+---
+
+## Introduccion
+
+El INEGI realizó el levantamiento de la Encuesta Nacional de Ingresos y Gastos de los Hogares 2022 (ENIGH 2022), que tiene como objetivo proporcionar un panorama estadístico del comportamiento de los ingresos y gastos de los hogares en cuanto a su monto, procedencia y distribución; adicionalmente ofrece información sobre las características ocupacionales y sociodemográficas de los integrantes del hogar, así como las características de la infraestructura de la vivienda y el equipamiento del hogar. Con el propósito de satisfacer las necesidades de los usuarios, se presenta la Descripción del cálculo de los principales indicadores con R. Este documento incluye ejemplos de códigos en el software R para el cálculo de los principales indicadores y sus precisiones estadísticas: coeficiente de variación, error estándar e intervalos de confianza.
+
+A continuación, se presentan ejemplos de códigos para el cálculo de los principales indicadores de la ENIGH 2022. Están escritos para que el usuario los ejecute sin necesidad de cambio e incluyen comen- tarios que explican parte del código. Antes de ejecutar los códigos es necesario que el usuario cargue las librerías foreign y survey. La primera se utiliza para leer y escribir archivos de bases de datos y la segunda para el cálculo de las esti- maciones, errores estándar, coeficientes de variación, intervalos de confianza. Asimismo, se debe cargar la librería doBy que permitirá ordenar de menor a mayor los ingresos, con el fin de la creación de deciles de hogares, y también la librería reldist, la cual permite llamar la función que calculará el coeficiente de GINI. Para ello, deben ejecutarse los siguientes comandos
+
+## Set up Paqueterias
+
+```{r setuppack}
+## Carga el paquete foreign, el cual auxiliará para cargar los datos en diferentes formatos
+#(DBF, SPSS, STATA, SAS)
+library(foreign)
+## Carga el paquete survey. Esta librería sirve para el cálculo del diseño muestral
+library(survey)
+## Librería que permite hacer un ordenamiento de la tabla según el ingreso
+library(doBy)
+## Librería que incluye la función para el cálculo del GINI
+library(reldist)
+## Opción para tratar los casos de los estratos con una sola una UPM
+options(survey.lonely.psu = "adjust")
+
+source("~/Documents/RENIGH Website/R/calculo_principales_indicadores_enigh2022.R")
+```
+
+## Calculo de Indicadores de Ingreso
+
+### Ingreso corriente promedio trimestral por hogar en deciles de hogares y su coeficiente de GINI
+
+El coeficiente de GINI es una medida de concentración del ingreso, cuando el valor se acerca a uno, indica que hay mayor concentración del ingreso; en cambio cuando se acerca a cero la concentración es menor.
+
+```{r}
+## Cuadro de sección 2 tabulados básicos ENIGH 2022
+## Establece el directorio donde se encuentra la base de datos
+# #setwd("D:/ENIGH_2022")
+## Abre la tabla concentradohogar
+Conc <- get_tbl_concentrado_hogar("concentradohogar.dbf")
+
+
+```
+
+#### Calculo deciles de hogares
+
+```{r}
+## Hogares
+
+## Deciles de hogares
+
+## Ordena Conc de acuerdo a ing_cor, folioviv, foliohog
+Conc <- sort_data_by_income_and_location(Conc)
+
+## Suma todos los factores y guarda el valor en el vector tot_hogares
+tot_hogares <- compute_total_households(Conc)
+
+## Creación de deciles de hogares
+decile_results <- calculate_decile_values(Conc, tot_hogares)
+
+
+
+## Se calcula el promedio de ingreso para el total y para cada uno de los deciles
+calculate_average_income(decile_results, tot_hogares)
+```
+
+#### Cuadros
+
+```{r}
+
+calculate_and_display_decile_income_gini(Conc)
+
+
+```
+
+### Ingreso corriente promedio trimestral por principales fuentes según entidad federativa
+
+A continuación, se presenta el código que calcula el ingreso corriente promedio trimestral por principales
+
+fuentes según entidad federativa. Después de ejecutar las estimaciones, se calculan sus errores están-
+
+dar, sus coeficientes de variación, los límites inferiores y superiores de los intervalos de confianza, se en-
+
+contrarán en estructuras de datos de tipo data.frame llamadas c_ent_ES, c_ent_SE, c_ent_CV, c_ent_LI
+
+y c_ent_LS, respectivamente.
+
+```{r}
+## Limpia la pantalla de tablas o basura de un ejercicio anterior
+#rm(list = ls())
+## Establece el directorio donde se encuentra la base de datos
+##setwd("D:/ENIGH_2022")
+## Abre la tabla concentradohogar
+Conc <- get_tbl_concentrado_hogar("concentradohogar.dbf")
+
+
+
+
+
+```
+
+#### Indicadores
+
+```{r}
+  # Define the list of income indicators
+  income_indicators <- c(
+    "Ingreso corriente",
+    "Ingreso del trabajo",
+    "Ingreso del trabajo subordinado",
+    "Ingreso del trabajo independiente",
+    "Ingreso de otros trabajos",
+    "Renta de la propiedad",
+    "Ingresos de sociedades",
+    "Arrendamiento",
+    "Transferencias",
+    "Jubilación",
+    "Becas",
+    "Donativos",
+    "Remesas",
+    "Beneficios de gobierno",
+    "Transferencias de hogares",
+    "Transferencias de instituciones",
+    "Estimación del alquiler",
+    "Otros ingresos"
+  )
+  
+# Call the function to load income indicators
+income_results <- load_indicadores_ingreso_total_y_nacional(Conc,
+                                                            income_indicators)
+
+
+# Access results for a specific indicator (e.g., "Ingreso corriente")
+# Results for total: income_results[["Ingreso corriente"]][["total_result"]]
+# Results for entidad: income_results[["Ingreso corriente"]][["entidad_results"]]
+
+```
+
+#### Estimaciones
+
+```{r}
+# Call the function with your income_results
+estimaciones <- extract_estimaciones(income_results)
+```
+
+#### Error estándar
+
+```{r}
+
+# Use the function to calculate and extract standard errors
+standard_errors <- calculate_and_extract_standard_errors(indicator_results)
+```
+
+#### Coeficiente de variación
+
+```{r}
+# Use the function to calculate and extract coefficients of variation
+coefficients_of_variation <- calculate_and_extract_coefficient_of_variation(indicator_results)
+
+```
+
+#### Límite inferior
+
+```{r}
+# Use the function to calculate and extract lower limits
+lower_limits <- calculate_and_extract_lower_limits(indicator_results)
+
+```
+
+#### Límite superior
+
+```{r}
+# Use the function to calculate and extract upper limits
+upper_limits <- calculate_and_extract_upper_limits(indicator_results)
+```
+
+#### Creación de cuadros
+
+```{r}
+# Build presentation tables
+presentation_tables <- build_presentation_tables_ingreso_corriente_trimestral(income_results)
+
+
+# Access the components of the named list
+estimacion_table <- presentation_tables$"Estimación"
+error_estandar_table <- presentation_tables$"Error Estándar"
+coef_var_table <- presentation_tables$"Coeficiente de Variación"
+limite_inferior_table <- presentation_tables$"Límite Inferior"
+limite_superior_table <- presentation_tables$"Límite Superior"
+```
+
+## Calculo de Indicadores de Gasto
+
+### Gasto corriente monetario promedio trimestral por grandes rubros según entidad federativa
+
+```{r}
+# Gasto corriente monetario promedio trimestral por grandes rubros según
+# entidad federativa
+# 2022
+## Carga librerías
+library(foreign)
+library(survey)
+## Limpia la pantalla de tablas o basura de un ejercicio anterior
+#rm(list = ls())
+## Establece el directorio donde se encuentra la base de datos
+#setwd("D:/ENIGH_2022")
+## Abre la tabla concentradohogar
+Conc <- get_tbl_concentrado_hogar("concentradohogar.dbf")
+
+
+```
+
+#### Indicadores
+
+```{r}
+indicadores_de_gasto <-  c(
+    "Gasto corriente monetario",
+    "Gasto en alimentos",
+    "Gasto en vestido y calzado",
+    "Gasto en vivienda y servicios de conservación",
+    "Gasto en artículos y servicios para la limpieza",
+    "Gasto en cuidados de la salud",
+    "Gasto en transporte",
+    "Gasto en servicios de educación",
+    "Gasto en cuidados personales",
+    "Transferencias de gasto"
+)
+
+gasto_indicators <- load_indicadores_gasto_total_y_nacional(Conc, indicadores_de_gasto = indicadores_de_gasto)
+
+```
+
+#### Promedios
+
+```{r}
+# Extract gasto ES indicators
+gasto_ES_indicators <- extract_gasto_ES(gasto_indicators)
+```
+
+#### Error estándar
+
+```{r}
+
+# Calculate and extract standard errors for gasto indicators
+standard_errors_for_gasto <- calculate_and_extract_standard_errors_for_gasto(gasto_ES_indicators)
+```
+
+#### Coeficiente de variación
+
+```{r}
+# Calculate and extract CV for gasto indicators
+CV_for_gasto <- calculate_and_extract_coefficient_of_variation_for_gasto(gasto_ES_indicators)
+
+# The CV_for_gasto list will contain the CV values with the correct names for gasto indicators
+
+```
+
+#### Límite inferior
+
+```{r}
+
+
+# Calculate and extract LI for gasto indicators
+LI_for_gasto <- calculate_and_extract_lower_limits_for_gasto(gasto_ES_indicators)
+
+# The LI_for_gasto list will contain the lower limits with the correct names for gasto indicators
+
+```
+
+#### Límite superior
+
+```{r}
+
+# Calculate and extract LS for gasto indicators
+LS_for_gasto <- calculate_and_extract_upper_limits_for_gasto(gasto_ES_indicators)
+
+# The LS_for_gasto list will contain the upper limits with the correct names for gasto indicators
+
+```
+
+#### Cuadros
+
+```{r}
+# Usage example:
+presentation_tables_gasto_corriente <- build_presentation_tables_gasto_corriente(gasto_results)
+```
+
+### Gasto corriente monetario trimestral por grandes rubros según tamaño de localidad 2022
+
+```{r}
+## Limpia la pantalla de tablas o basura de un ejercicio anterior
+#rm(list = ls())
+## Carga librerías
+#library(xlsx) no JAVA please
+library(foreign)
+library(grid)
+library(Matrix)
+library(doBy)
+library(survival)
+library(reldist)
+library(tidyverse)
+library(survey)
+options(survey.lonely.psu="adjust")
+## Cuadro de sección 4 tabulados básicos ENIGH 2022
+## Establece el directorio donde se encuentra la base de datos
+##setwd("D:/ENIGH_2022")
+## Abre la tabla concentradohogar
+Conc <- get_tbl_concentrado_hogar("concentradohogar.dbf")
+```
+
+#### Creacion de Variables
+
+```{r}
+# Usage:
+Conc6 <- build_data_4_gasto_corriente_trimestral(Conc)
+
+```
+
+#### Diseno muestral
+
+```{r}
+# Example usage:
+statistics_gasto_corriente <- calculate_statistics_gasto_corriente(Conc6)
+
+```
+
+#### Creacion de tablas
+
+```{r}
+# Generate and display tables using the create_tables_gasto_corriente function
+create_tables_gasto_corriente(statistics_gasto_corriente)
+```
+
+## Calculo de Indicadores de Perceptores
+
+### Total de personas perceptoras de ingresos y su ingreso promedio trimestral monetario por tipo de discapacidad
+
+A continuación, se presenta el código que calcula el promedio de los ingresos monetarios trimestrales de las personas perceptoras por tipo de discapacidad, correspondiente al cuadro 7.1 de los tabulados bási- cos de la ENIGH 2022.
+
+```{r}
+
+# Cuadro 4.1
+# Personas perceptoras de ingresos y su ingreso promedio trimestral
+# monetario por tipo de discapacidad
+# 2022
+## Carga librerías
+library(foreign)
+library(survey)
+## Limpia la pantalla de tablas o basura de un ejercicio anterior
+#rm(list = ls())
+## Establece el directorio donde se encuentra la base de datos
+##setwd("D:/ENIGH_2022")
+# Call the function to prepare the data
+prepared_data <- prepare_conc_ingr_pers_data()
+
+# Main Code
+
+# Create special ID columns for each dataset
+Conc_data <- create_special_id(Conc_data, c("folioviv", "foliohog"))
+Ingr_data <- create_special_id(Ingr_data, c("folioviv", "foliohog", "numren"))
+Pers_data <- create_special_id(Pers_data, c("folioviv", "foliohog", "numren"))
+
+# Count disabilities and calculate income for individuals with disabilities
+Pers_data <- count_and_calculate_disabilities(
+  Pers_data,
+  c("disc_camin", "disc_ver", "disc_brazo", "disc_apren",
+    "disc_oir", "disc_vest", "disc_habla", "disc_acti"),
+  "ing_tri"
+)
+
+# Calculate survey design for the population data
+mydesign <- calculate_survey_design(Pers_data, "upm", "est_dis", "factor")
+
+# Calculate summary statistics for the "int" variable
+summary_stats <- list(
+  mean = calculate_summary_statistics(mydesign, "int"),
+  sd = calculate_summary_statistics(mydesign, "int", FUN = svyvar),
+  lower_limit = calculate_summary_statistics(mydesign, "int", FUN = function(x) svyttest(x, lower = TRUE)$lower),
+  upper_limit = calculate_summary_statistics(mydesign, "int", FUN = function(x) svyttest(x, lower = TRUE)$upper),
+  cv = calculate_summary_statistics(mydesign, "int", FUN = function(x) svyvar(x) / svymean(x)^2)
+)
+
+# Print summary statistics
+summary_stats$mean
+summary_stats$sd
+summary_stats$lower_limit
+summary_stats$upper_limit
+summary_stats$cv
