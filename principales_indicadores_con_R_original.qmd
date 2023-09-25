@@ -1,32 +1,19 @@
 ---
 title: "Descripción del cálculo de los principales indicadores con R"
 institution: "[Fuente Inegi Publicacion](https://www.inegi.org.mx/contenidos/productos/prod_serv/contenidos/espanol/bvinegi/productos/nueva_estruc/889463911166.pdf)"
+execute: 
+  cache: true
+format: 
+  html:
+    code-tools:
+      source: https://github.com/quarto-dev/quarto-web/blob/main/index.md
 ---
 
 ## Introduccion
 
-El INEGI realizó el levantamiento de la Encuesta Nacional de Ingresos
-y Gastos de los Hogares 2022 (ENIGH 2022), que tiene como objetivo
-proporcionar un panorama estadístico del comportamiento de los
-ingresos y gastos de los hogares en cuanto a su monto, procedencia y
-distribución; adicionalmente ofrece información sobre las características
-ocupacionales y sociodemográficas de los integrantes del hogar,
-así como las características de la infraestructura de la vivienda y el
-equipamiento del hogar.
-Con el propósito de satisfacer las necesidades de los usuarios, se
-presenta la Descripción del cálculo de los principales indicadores con
-R. Este documento incluye ejemplos de códigos en el software R para el cálculo de los principales indicadores y sus precisiones estadísticas:
-coeficiente de variación, error estándar e intervalos de confianza.
+El INEGI realizó el levantamiento de la Encuesta Nacional de Ingresos y Gastos de los Hogares 2022 (ENIGH 2022), que tiene como objetivo proporcionar un panorama estadístico del comportamiento de los ingresos y gastos de los hogares en cuanto a su monto, procedencia y distribución; adicionalmente ofrece información sobre las características ocupacionales y sociodemográficas de los integrantes del hogar, así como las características de la infraestructura de la vivienda y el equipamiento del hogar. Con el propósito de satisfacer las necesidades de los usuarios, se presenta la Descripción del cálculo de los principales indicadores con R. Este documento incluye ejemplos de códigos en el software R para el cálculo de los principales indicadores y sus precisiones estadísticas: coeficiente de variación, error estándar e intervalos de confianza.
 
-A continuación, se presentan ejemplos de códigos para el cálculo de los principales indicadores de la
-ENIGH 2022. Están escritos para que el usuario los ejecute sin necesidad de cambio e incluyen comen-
-tarios que explican parte del código.
-Antes de ejecutar los códigos es necesario que el usuario cargue las librerías foreign y survey. La
-primera se utiliza para leer y escribir archivos de bases de datos y la segunda para el cálculo de las esti-
-maciones, errores estándar, coeficientes de variación, intervalos de confianza. Asimismo, se debe cargar
-la librería doBy que permitirá ordenar de menor a mayor los ingresos, con el fin de la creación de deciles
-de hogares, y también la librería reldist, la cual permite llamar la función que calculará el coeficiente de
-GINI. Para ello, deben ejecutarse los siguientes comandos
+A continuación, se presentan ejemplos de códigos para el cálculo de los principales indicadores de la ENIGH 2022. Están escritos para que el usuario los ejecute sin necesidad de cambio e incluyen comen- tarios que explican parte del código. Antes de ejecutar los códigos es necesario que el usuario cargue las librerías foreign y survey. La primera se utiliza para leer y escribir archivos de bases de datos y la segunda para el cálculo de las esti- maciones, errores estándar, coeficientes de variación, intervalos de confianza. Asimismo, se debe cargar la librería doBy que permitirá ordenar de menor a mayor los ingresos, con el fin de la creación de deciles de hogares, y también la librería reldist, la cual permite llamar la función que calculará el coeficiente de GINI. Para ello, deben ejecutarse los siguientes comandos
 
 ## Set up Paqueterias
 
@@ -44,16 +31,11 @@ library(reldist)
 options(survey.lonely.psu = "adjust")
 ```
 
-
 ## Calculo de Indicadores de Ingreso
-
 
 ### Ingreso corriente promedio trimestral por hogar en deciles de hogares y su coeficiente de GINI
 
-El coeficiente de GINI es una medida de concentración del ingreso, cuando el valor se acerca a uno,
-indica que hay mayor concentración del ingreso; en cambio cuando se acerca a cero la concentración es
-menor.
-
+El coeficiente de GINI es una medida de concentración del ingreso, cuando el valor se acerca a uno, indica que hay mayor concentración del ingreso; en cambio cuando se acerca a cero la concentración es menor.
 
 ```{r}
 # Ingreso corriente promedio trimestral por hogar en deciles de
@@ -75,37 +57,49 @@ Conc <- Conc [ c("folioviv", "foliohog", "ing_cor", "ingtrab", "trabajo", "negoc
 "otros_trab", "rentas", "utilidad", "arrenda", "transfer", "jubilacion",
 "becas", "donativos", "remesas", "bene_gob", "transf_hog", "trans_inst",
 "estim_alqu", "otros_ing", "factor", "upm", "est_dis")]
+
+# Create a flag for numbering households
+Conc$Nhog <- 1
+
 ## Se define la columna de los deciles
 Numdec<-c("Total", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
+```
+
+#### Calculo deciles de hogares
+
+```{r}
 ## Hogares
-## Se crea una bandera para numerar los hogares
-Conc$Nhog <- 1
+
 ## Deciles de hogares
 ## Deja activa la tabla Conc
 attach(Conc)
-
-```
-
-```{r}
 ## Ordena Conc de acuerdo a ing_cor, folioviv, foliohog
 Conc<- orderBy (~+ing_cor+folioviv+foliohog, data=Conc)
+
 ## Suma todos los factores y guarda el valor en el vector tot_hogares
 tot_hogares <- sum(factor)
+
 ## Se divide la suma de factores entre diez para sacar el tamaño del decil
 ## (se debe de truncar el resultado quitando los decimales)
 tam_dec<-trunc(tot_hogares/10)
+
 ## Muestra la suma del factor en variable hogar
-Conc$tam_dec=tam_dec
+Conc$tam_dec<-tam_dec
+
 ## Creación de deciles de hogares
 ## Se renombra la tabla concentrado a BD1
 BD1 <- Conc
+
 ## Dentro de la tabla BD1 se crea la variable MAXT y se le asignan los
 ## valores que tiene el ing_cor.
 BD1$MAXT <- BD1$ing_cor
+
 ## Se ordena de menor a mayor según la variable MAXT
 BD1 <- BD1[with(BD1, order(rank(MAXT))),]
+
 ## Se aplica la función cumsum, suma acumulada a la variable factor
 BD1$ACUMULA <- cumsum(BD1$factor)
+
 ## Entra a un ciclo donde genera los deciles 1 a 10
 for(i in 1:9)
 {
@@ -116,14 +110,20 @@ b1<-tam_dec*i-BD1[dim(BD1[BD1$ACUMULA<tam_dec*i,])[1],]$ACUMULA
 BD1[(dim(BD1[BD1$ACUMULA<tam_dec*i,])[1]+1),]$factor<-b1
 BD1[(dim(BD1[BD1$ACUMULA<tam_dec*i,])[1]+2),]$factor<-(a1-b1)
 }
+
+
 BD1$ACUMULA2<-cumsum(BD1$factor)
 BD1$DECIL <- 0
 BD1[(BD1$ACUMULA2<=tam_dec),]$DECIL <- 1
+
+
 for(i in 1:9)
 {
 BD1[((BD1$ACUMULA2>tam_dec*i)&(BD1$ACUMULA2<=tam_dec*(i+1))),]$DECIL <- (i+1)
 }
 BD1[BD1$DECIL%in%"0",]$DECIL <- 10
+
+
 ## Total de hogares
 x <- tapply(BD1$factor,BD1$Nhog,sum)
 
@@ -137,7 +137,6 @@ ing_cormed_d <- tapply(BD1$factor*BD1$ing_cor,BD1$DECIL,sum)/y
 #### Cuadros
 
 ```{r}
-
 ## Guarda los resultados en un data frame
 prom_rub <- data.frame (c(ing_cormed_t,ing_cormed_d))
 ## Agrega el nombre a las filas
@@ -149,14 +148,17 @@ ing_cormed_d[3],ing_cormed_d[4],
 ing_cormed_d[5],ing_cormed_d[6],
 ing_cormed_d[7],ing_cormed_d[8],
 ing_cormed_d[9],ing_cormed_d[10]))
+
 ## Se efectúa la función GINI y se guarda en el vector
 a<-gini(deciles_hog_ingcor$ingreso,weights=deciles_hog_ingcor$hogares)
 ## Se renombran las variables (columnas)
 names(prom_rub) <- c("INGRESO CORRIENTE")
 names(a) <- "GINI"
 ## Muestra el resultado en pantalla
-round(prom_rub)
-round(a,3)
+round(prom_rub) |> 
+  gt::gt()
+round(as.data.frame(a),3) |> 
+  gt::gt()
 
 ```
 
@@ -205,8 +207,6 @@ Conc$Nhog <- 1
 ## Se carga el diseño muestral
 mydesign <- svydesign(id=~upm,strata=~est_dis,data=Conc,weights=~factor)
 ```
-
-
 
 #### Indicadores
 
@@ -582,19 +582,21 @@ names(c_ent_LS) = c("ING COR", "TRABAJO", "SUBORDINADO", "NEGOCIOS","OTROS TRAB"
 "ESTIM ALQU", "OTROS INGRESOS")
 ## El comando round, en el caso del coeficiente de variación, redondea a 4 decimales.
 ## Mostramos el resultado en pantalla
-round(c_ent_ES)
-round(c_ent_SE)
-round(c_ent_CV,4)*100
-round(c_ent_LI)
-round(c_ent_LS)
+round(c_ent_ES) |> 
+  gt::gt()
+round(c_ent_SE) |> 
+  gt::gt()
+(round(c_ent_CV,4)*100) |> 
+  gt::gt()
+round(c_ent_LI) |> 
+  gt::gt()
+round(c_ent_LS) |> 
+  gt::gt()
 ```
-
-
 
 ## Calculo de Indicadores de Gasto
 
 ### Gasto corriente monetario promedio trimestral por grandes rubros según entidad federativa
-
 
 ```{r}
 # Gasto corriente monetario promedio trimestral por grandes rubros según
@@ -613,7 +615,9 @@ Conc<- read.dbf("concentradohogar.dbf",as.is = T)
 Conc <- Conc [ c("folioviv", "foliohog", "tot_integ","gasto_mon",
 "alimentos", "vesti_calz", "vivienda", "limpieza",
 "salud", "transporte", "educa_espa", "personales",
-"transf_gas","factor","upm","est_dis")]
+"transf_gas","factor","upm","est_dis",
+#missing
+"ubica_geo")]
 ## Se crea una variable para agregar la entidad federativa
 Conc$entidad <-substr(Conc$ubica_geo,1,2)
 ## Se define la columna con el nombre de las entidades federativas
@@ -668,9 +672,7 @@ M_transf_gasTot <- svyratio(~transf_gas,denominator=~Nhog,mydesign)
 M_transf_gasEnt <- svyby(~transf_gas,denominator=~Nhog,by=~entidad,mydesign,svyratio)
 ```
 
-
 #### Promedios
-
 
 ```{r}
 ES_M_gasto_monTot <- M_gasto_monTot[[1]]
@@ -866,13 +868,17 @@ names <- (row.names(c_gas_ES) <- row.names(c_gas_SE) <-
 row.names(c_gas_CV) <- row.names(c_gas_LI) <-
 row.names(c_gas_CV) <- row.names(c_gas_LI) <-
 row.names(c_gas_LS) <- Entidades)
-round(c_gas_ES)
-round(c_gas_SE)
-round(c_gas_CV,4)*100
-round(c_gas_LI)
-round(c_gas_LS)
+round(c_gas_ES) |> 
+  gt::gt()
+round(c_gas_SE) |> 
+  gt::gt()
+(round(c_gas_CV,4)*100 )|> 
+  gt::gt()
+round(c_gas_LI) |> 
+  gt::gt()
+round(c_gas_LS) |> 
+  gt::gt()
 ```
-
 
 ### Gasto corriente monetario trimestral por grandes rubros según tamaño de localidad 2022
 
@@ -898,7 +904,7 @@ Conc<- read.dbf("concentradohogar.dbf",as.is = T)
 ## Selección de las variables de interés
 Conc <- Conc[c("folioviv", "foliohog", "tam_loc", "factor", "upm", "est_dis",
 "gasto_mon", "alimentos", "vesti_calz", "vivienda", "limpieza",
-"salud", "transporte", "educa_espa", "personales", "transf_gas",)]
+"salud", "transporte", "educa_espa", "personales", "transf_gas")]
 ```
 
 ```{r}
@@ -927,11 +933,18 @@ Conc$A28 <- ifelse(Conc$personales>0,1,0)
 ## Transferencias de gasto
 Conc$A32 <- ifelse(Conc$transf_gas>0,1,0)
 ## Renombra variables
-Conc <- rename(Conc,B00 <- gasto_mon, B01 <- alimentos,
-B05 <- vesti_calz, B08 <- vivienda,
-B13 <- limpieza, B17 <- salud,
-B18 <- transporte, B24 <- educa_espa,
-B28 <- personales, B32 <- transf_gas)
+Conc <- Conc %>%
+  rename_with(~ "B00", gasto_mon) %>%
+  rename_with(~ "B01", alimentos) %>%
+  rename_with(~ "B05", vesti_calz) %>%
+  rename_with(~ "B08", vivienda) %>%
+  rename_with(~ "B13", limpieza) %>%
+  rename_with(~ "B17", salud) %>%
+  rename_with(~ "B18", transporte) %>%
+  rename_with(~ "B24", educa_espa) %>%
+  rename_with(~ "B28", personales) %>%
+  rename_with(~ "B32", transf_gas)
+
 ## Seleccionar variables de interés
 Conc2 <- Conc [ c("folioviv","foliohog","upm","est_dis","factor","tam","tam0",
 "A00","A01","A05","A08","A13","A17","A18","A24","A28","A32")]
@@ -1039,24 +1052,24 @@ rownames(TOTAL) <- rownames(SE_TOTAL) <-
 rownames(CV_TOTAL) <- rownames(LI_TOTAL) <-
 rownames(LS_TOTAL) <- gastos
 
-## Se muestran los resultado e
-n pantalla
-round(TOTAL,8)
-round(SE_TOTAL,8)
-round(CV_TOTAL,8)
-round(LI_TOTAL,8)
-round(LS_TOTAL,8)
+## Se muestran los resultado en pantalla
+round(TOTAL,8) |> 
+  gt::gt()
+round(SE_TOTAL,8) |> 
+  gt::gt()
+round(CV_TOTAL,8) |> 
+  gt::gt()
+round(LI_TOTAL,8) |> 
+  gt::gt()
+round(LS_TOTAL,8) |> 
+  gt::gt()
 ```
-
 
 ## Calculo de Indicadores de Perceptores
 
 ### Total de personas perceptoras de ingresos y su ingreso promedio trimestral monetario por tipo de discapacidad
 
-A continuación, se presenta el código que calcula el promedio de los ingresos monetarios trimestrales de
-las personas perceptoras por tipo de discapacidad, correspondiente al cuadro 7.1 de los tabulados bási-
-cos de la ENIGH 2022.
-
+A continuación, se presenta el código que calcula el promedio de los ingresos monetarios trimestrales de las personas perceptoras por tipo de discapacidad, correspondiente al cuadro 7.1 de los tabulados bási- cos de la ENIGH 2022.
 
 ```{r}
 
@@ -1490,10 +1503,23 @@ names(LS_disc) <- c("PERSONAS PERCEPTORAS DE INGRESO",
 "INGRESO PROMEDIO (PESOS)")
 
 ## Resultados en pantalla
-ES_disc
-round(EE_disc)
-round(CV_disc,4)*100
-LI_disc
-LS_disc
+ES_disc |> 
+  gt::gt()
+round(EE_disc) |> 
+  gt::gt()
+(round(CV_disc,4)*100 ) |> 
+  gt::gt()
+LI_disc |> 
+  gt::gt()
+LS_disc |> 
+  gt::gt()
 ```
 
+## Script en 1 solo chunk
+
+```{r}
+#| echo: true
+#| eval: false
+#| file: R/principales_indicadores_con_R_original.R
+
+```
